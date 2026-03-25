@@ -1,7 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -Werror -Iinclude
-EXIF_CFLAGS := $(shell pkg-config --cflags libexif)
-EXIF_LIBS := $(shell pkg-config --libs libexif)
+CXXFLAGS = -std=c++17 -Wall -Wextra -Werror -Iinclude -Ithird_party/libexif/include
 
 NAME = scorpion
 SRCS = src/main.cpp
@@ -10,10 +8,10 @@ OBJS = $(SRCS:.cpp=.o)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(EXIF_CFLAGS) $(OBJS) $(EXIF_LIBS) -o $(NAME)
+	$(CXX) $(CXXFLAGS) $(OBJS) /usr/lib/x86_64-linux-gnu/libexif.so.12.3.4 -o $(NAME)
 
 src/%.o: src/%.cpp
-	$(CXX) $(CXXFLAGS) $(EXIF_CFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f src/*.o
