@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+
+import argparse
+import hmac
+import os
+import struct
+import sys
+import time
+from hashlib import sha1
+from pathlib import Path
+
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+
+OUTPUT_FILE = "ft_otp.key"
+AES_KEY = b"0123456789abcdef0123456789abcdef"
+AES_BLOCK_SIZE = 16
+
+
+def error_exit(message: str, code: int = 1) -> None:
+    print(f"ft_otp: error: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def read_binary_file(path: str) -> bytes:
+    try:
+        data = Path(path).read_bytes()
+        return data
+    except FileNotFoundError:
+        error_exit(f"file not found: {path}")
+    except OSError as exc:
+        error_exit(f"could not read {path}: {exc}")
+
+
+def read_text_file(path: str) -> str:
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+        return text
+    except FileNotFoundError:
+        error_exit(f"file not found: {path}")
+    except OSError as exc:
+        error_exit(f"could not read {path}: {exc}")
+
+
+def validate_hex_key(raw: str) -> str:
+    raw = raw.rstrip("\n")
+
+    if len(raw) < 64:
+        error_exit("key must be at least 64 hexadecimal characters.")
+
+    if len(raw) % 2 != 0:
+        error_exit("hex key must contain an even number of characters.")
+
+    try:
+        bytes.fromhex(raw)
+    except ValueError:
+        error_exit("key must contain only hexadecimal characters.")
+
+    return raw.lower()
+
+
+def encrypt_hex_key_to_file(key_hex: str, output_path: str = OUTPUT_FILE) -> None:
+    # Path(output_path).write_text(key_hex)
+    # return
+
+    iv = os.urandom(AES_BLOCK_SIZE)
+    plaintext = key_hex.encode("utf-8")
+    padder = padding.PKCS7(128).padder()
+    padded = padder.update(plaintext) + padder.finalize()
+
+    cipher = Cipher(algorithms.AES(AES_KEY), modes.CBC(iv))
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded) + encryptor.finalize()
+
+    final_data = iv + ciphertext
+
+    try:
+        Path(output_path).write_bytes(final_data)
+    except OSError as exc:
+        error_exit(f"could not write {output_path}: {exc}")
+
+
+def decrypt_hex_key_from_file(path: str) -> str:
+    # return Path(path).read_text(encoding="utf-8")
+    data = read_binary_file(path)
+
+    if len(data) <= AES_BLOCK_SIZE:
+        error_exit("invalid encrypted key file.")
+
+    iv = data[:AES_BLOCK_SIZE]
+    ciphertext = data[AES_BLOCK_SIZE:]
+
+    if len(ciphertext) % AES_BLOCK_SIZE != 0:
+        error_exit("invalid encrypted key file.")
+
+    cipher = Cipher(algorithms.AES(AES_KEY), modes.CBC(iv))
+    decryptor = cipher.decryptor()
+    padded = decryptor.update(ciphertext) + decryptor.finalize()
+
+    try:
+        unpadder = padding.PKCS7(128).unpadder()
+        plaintext = unpadder.update(padded) + unpadder.finalize()
+    except ValueError:
+        error_exit("corrupted encrypted key file.")
+
+    try:
+        key_hex = plaintext.decode("utf-8")
+    except UnicodeDecodeError:
+        error_exit("corrupted encrypted key file.")
+
+    normalized = validate_hex_key(key_hex)
+    return normalized
+
+
+def get_code(input_file: str) -> None:
+    #HOTP = truncate(HMAC-SHA1(secret_key, counter)) mod 10^6
+    key_hex = decrypt_hex_key_from_file(input_file)
+    key = bytes.fromhex(key_hex)
+    counter = int(time.time()) // 30
+    digits = 6
+    # print(f"key hex = {key_hex}")
+    # print(f"key bytes = {key}")
+
+    counter_bytes = struct.pack(">Q", counter) #biggest part first big endian - turns to 8 byte standard
+    # print(f"counter bytes = {counter_bytes}")
+    # print(f"counter bytes hex = {counter_bytes.hex()}")
+
+    digest = hmac.new(key, counter_bytes, sha1).digest() #20 bytes output secret key and counter are mixed
+    # print(f"hmac digest bytes = {digest}")
+    # print(f"hmac digest hex = {digest.hex()}")
+
+    offset = digest[-1] & 0x0F # use low 4 bits of last byte to choose start positio
+    # print(f"dynamic truncation offset = {offset}")
+
+	# take 4 bytes from digest starting at offset, build a 31-bit positive integer
+    binary_code = (
+        ((digest[offset] & 0x7F) << 24) #mask with only 7 bits -rightmost byte
+        | ((digest[offset + 1] & 0xFF) << 16)
+        | ((digest[offset + 2] & 0xFF) << 8)
+        | (digest[offset + 3] & 0xFF)
+    )
+
+    otp_int = binary_code % (10 ** digits)
+    otp = str(otp_int).zfill(digits)
+    print(otp)
+
+
+def generate_key(input_file: str) -> None:
+    raw = read_text_file(input_file)
+    key_hex = validate_hex_key(raw)
+    encrypt_hex_key_to_file(key_hex)
+    print(f"Key was successfully saved in {OUTPUT_FILE}.")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="ft_otp")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-g", metavar="FILE", help="read hex key from FILE and save encrypted ft_otp.key")
+    group.add_argument("-k", metavar="FILE", help="read encrypted key file and print current OTP")
+    return parser
+
+
+def ft_otp() -> None:
+    args = build_parser().parse_args()
+
+    if args.g:
+        generate_key(args.g)
+
+    elif args.k:
+        get_code(args.k)
+
+
+if __name__ == "__main__":
+    ft_otp()
+    
+#oathtool --totp "$(cat key.txt)"
