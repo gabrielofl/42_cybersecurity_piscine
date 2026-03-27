@@ -12,11 +12,7 @@ from pathlib import Path
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-
 OUTPUT_FILE = "ft_otp.key"
-AES_KEY = b"0123456789abcdef0123456789abcdef"
-AES_BLOCK_SIZE = 16
-
 
 def error_exit(message: str, code: int = 1) -> None:
     print(f"ft_otp: error: {message}", file=sys.stderr)
@@ -64,16 +60,16 @@ def encrypt_hex_key_to_file(key_hex: str, output_path: str = OUTPUT_FILE) -> Non
     # Path(output_path).write_text(key_hex)
     # return
 
-    iv = os.urandom(AES_BLOCK_SIZE)
+    init_vector = os.urandom(16)
     plaintext = key_hex.encode("utf-8")
     padder = padding.PKCS7(128).padder()
     padded = padder.update(plaintext) + padder.finalize()
 
-    cipher = Cipher(algorithms.AES(AES_KEY), modes.CBC(iv))
+    cipher = Cipher(algorithms.AES(b"0123456789abcdef0123456789abcdef"), modes.CBC(init_vector))
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(padded) + encryptor.finalize()
 
-    final_data = iv + ciphertext
+    final_data = init_vector + ciphertext
 
     try:
         Path(output_path).write_bytes(final_data)
@@ -85,16 +81,16 @@ def decrypt_hex_key_from_file(path: str) -> str:
     # return Path(path).read_text(encoding="utf-8")
     data = read_binary_file(path)
 
-    if len(data) <= AES_BLOCK_SIZE:
+    if len(data) <= 16:
         error_exit("invalid encrypted key file.")
 
-    iv = data[:AES_BLOCK_SIZE]
-    ciphertext = data[AES_BLOCK_SIZE:]
+    iv = data[:16]
+    ciphertext = data[16:]
 
-    if len(ciphertext) % AES_BLOCK_SIZE != 0:
+    if len(ciphertext) % 16 != 0:
         error_exit("invalid encrypted key file.")
 
-    cipher = Cipher(algorithms.AES(AES_KEY), modes.CBC(iv))
+    cipher = Cipher(algorithms.AES(b"0123456789abcdef0123456789abcdef"), modes.CBC(iv))
     decryptor = cipher.decryptor()
     padded = decryptor.update(ciphertext) + decryptor.finalize()
 
@@ -114,23 +110,18 @@ def decrypt_hex_key_from_file(path: str) -> str:
 
 
 def get_code(input_file: str) -> None:
-    #HOTP = truncate(HMAC-SHA1(secret_key, counter)) mod 10^6
     key_hex = decrypt_hex_key_from_file(input_file)
     key = bytes.fromhex(key_hex)
-    counter = int(time.time()) // 30
-    digits = 6
+    counter = int(time.time()) // 60
     # print(f"key hex = {key_hex}")
-    # print(f"key bytes = {key}")
 
     counter_bytes = struct.pack(">Q", counter) #biggest part first big endian - turns to 8 byte standard
-    # print(f"counter bytes = {counter_bytes}")
-    # print(f"counter bytes hex = {counter_bytes.hex()}")
+    # print(f"counter bytes hex = {counter_bytes.hex()}")    
 
     digest = hmac.new(key, counter_bytes, sha1).digest() #20 bytes output secret key and counter are mixed
-    # print(f"hmac digest bytes = {digest}")
     # print(f"hmac digest hex = {digest.hex()}")
 
-    offset = digest[-1] & 0x0F # use low 4 bits of last byte to choose start positio
+    offset = digest[-1] & 0x0F # use low 4 bits of last byte to choose start position
     # print(f"dynamic truncation offset = {offset}")
 
 	# take 4 bytes from digest starting at offset, build a 31-bit positive integer
@@ -141,8 +132,8 @@ def get_code(input_file: str) -> None:
         | (digest[offset + 3] & 0xFF)
     )
 
-    otp_int = binary_code % (10 ** digits)
-    otp = str(otp_int).zfill(digits)
+    otp_int = binary_code % (10 ** 6) #OTP = TOTP(K) mod 10^digits
+    otp = str(otp_int).zfill(6)
     print(otp)
 
 
@@ -174,4 +165,4 @@ def ft_otp() -> None:
 if __name__ == "__main__":
     ft_otp()
     
-#oathtool --totp "$(cat key.txt)"
+#oathtool --totp --time-step-size=60s "$(cat key.txt)"

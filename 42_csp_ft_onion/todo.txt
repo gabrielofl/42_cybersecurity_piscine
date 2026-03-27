@@ -1,0 +1,49 @@
+//install vm
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y nginx openssh-server tor
+
+//tor browser??
+
+sudo mkdir -p /var/www/ft_onion
+sudo nano /var/www/ft_onion/index.html
+
+
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name _;
+
+    root /var/www/ft_onion;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+
+sudo nano /etc/nginx/sites-available/ft_onion
+
+sudo ln -s /etc/nginx/sites-available/ft_onion /etc/nginx/sites-enabled/ft_onion
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
+
+curl http://localhost
+
+sudo nano /etc/ssh/sshd_config
+Port 4242
+sudo systemctl restart ssh
+
+ssh -p 4242 youruser@localhost
+
+sudo nano /etc/tor/torrc
+
+HiddenServiceDir /var/lib/tor/ft_onion_service/
+HiddenServicePort 80 127.0.0.1:80
+
+
+sudo systemctl restart tor
+
+sudo cat /var/lib/tor/ft_onion_service/hostname

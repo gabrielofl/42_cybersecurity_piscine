@@ -1,0 +1,21 @@
+
+
+docker build --platform linux/386 -t dbg32 .
+docker run --rm -it --platform linux/386 -v "$PWD":/work -w /work dbg32
+
+gcc -g -O0 -fno-omit-frame-pointer -o prog prog.c
+
+file prog
+
+gdb ./prog
+
+break main
+run
+next
+step
+finish
+bt
+info locals
+info args
+layout src
+layout regs
