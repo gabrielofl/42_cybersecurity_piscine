@@ -5,9 +5,7 @@ int main(void) {
   int iVar1;
   char local_7e [14];
   char local_70 [100];
-  int local_c;
-  
-  local_c = 0;
+
   local_7e[0] = '_';
   local_7e[1] = '_';
   local_7e[2] = 's';
