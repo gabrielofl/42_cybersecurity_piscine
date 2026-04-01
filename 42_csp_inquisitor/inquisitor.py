@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 import argparse
 import scapy.all as scapy
 import re
@@ -69,13 +69,11 @@ def validate_args(args):
         error_exit("Invalid target MAC address")
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="ARP spoofing and FTP traffic monitor")
-    parser.add_argument("ip_src", type=str, help="Source IP address (your machine)")
-    parser.add_argument("mac_src", type=str, help="Source MAC address (your machine)")
-    parser.add_argument("ip_target", type=str, help="Target IP address to spoof")
-    parser.add_argument("mac_target", type=str, help="Target MAC address to spoof")
-    parser.add_argument("-i", "--interface", type=str, default="eth0", 
-                       help="Network interface to use (default: eth0)")
+    parser = argparse.ArgumentParser(description="ARP poisoning")
+    parser.add_argument("ip_src", type=str, help="Source IP address")
+    parser.add_argument("mac_src", type=str, help="Source MAC address")
+    parser.add_argument("ip_target", type=str, help="Target IP address")
+    parser.add_argument("mac_target", type=str, help="Target MAC address")
     return parser.parse_args()
 
 def main():
@@ -95,7 +93,7 @@ def main():
         signal.signal(signal.SIGINT, exit_gracefully)
         signal.signal(signal.SIGTERM, exit_gracefully)
         
-        print(f"Starting ARP spoofing on interface {args.interface}")
+        print(f"Starting ARP poisoning")
         print(f"Source: {ip_src} ({mac_src})")
         print(f"Target: {ip_target} ({mac_target})")
         print("Press Ctrl+C to stop and restore ARP tables\n")

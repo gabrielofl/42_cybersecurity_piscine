@@ -5,6 +5,9 @@ all: up
 up:
 	docker compose up --build
 
+nb:
+	docker compose up
+
 down:
 	docker compose down
 
@@ -17,4 +20,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all up down clean fclean re
+.PHONY: all up down clean fclean re nb

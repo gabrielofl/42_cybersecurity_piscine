@@ -1,8 +1,6 @@
 #!/bin/sh
 set -eu
 
-pip3 install scapy
-
 echo "=== Container identity ==="
 echo "Hostname: $(hostname)"
 echo
