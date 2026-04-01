@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  one:
+    build:
+      context: .
+    image: inquisitor:latest
+    container_name: one
+    hostname: one
+    ports:
+      - "2121:21"
+    networks:
+      ftp_net:
+        ipv4_address: 172.28.0.11
+
+  two:
+    image: inquisitor:latest
+    container_name: two
+    hostname: two
+    ports:
+      - "2221:21"
+    networks:
+      ftp_net:
+        ipv4_address: 172.28.0.12
+    pull_policy: never
+
+  three:
+    image: inquisitor:latest
+    container_name: three
+    hostname: three
+    ports:
+      - "2321:21"
+    networks:
+      ftp_net:
+        ipv4_address: 172.28.0.13
+    pull_policy: never
+
+networks:
+  ftp_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
