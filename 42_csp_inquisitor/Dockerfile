@@ -1,29 +1,24 @@
-FROM debian:bookworm-20240211-slim
+FROM python:3.9-slim
 
 RUN apt-get update && apt-get install -y \
     vsftpd \
-	ftp \
-	iproute2 \
+    tcpdump \
     net-tools \
-    procps \
-	python3 \
-	python3-pip \
-    libpcap-dev \
-    python3-scapy \
-	&& rm -rf /var/lib/apt/lists/*
+    iproute2 \
+    ftp \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -d /home/ftpuser -s /bin/bash ftpuser \
-    && echo "ftpuser:ftppass" | chpasswd \
-    && mkdir -p /home/ftpuser/files \
-    && chown -R ftpuser:ftpuser /home/ftpuser \
-    && mkdir -p /var/run/vsftpd/empty \
-    && chmod 755 /var/run/vsftpd/empty
+RUN mkdir -p /var/run/vsftpd/empty /home/vsftpd
 
-COPY vsftpd.conf /etc/vsftpd.conf
+RUN pip install --no-cache-dir scapy
+
+COPY inquisitor.py /app/inquisitor.py
 COPY entrypoint.sh /entrypoint.sh
-COPY inquisitor.py /inquisitor.py
+COPY vsftpd.conf /etc/vsftpd.conf
 
 RUN chmod +x /entrypoint.sh
+
+WORKDIR /app
 
 EXPOSE 21
 

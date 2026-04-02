@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
 
-echo "=== Container identity ==="
+echo "=========================="
 echo "Hostname: $(hostname)"
+echo "Container role: ${CONTAINER_ROLE:-unknown}"
 echo
 echo "IP addresses:"
 ip -4 addr show | awk '/inet / {print $2}'
@@ -12,7 +13,35 @@ ip link show | awk '/link\/ether/ {print $2}'
 echo "=========================="
 echo
 
-cp inquisitor.py inquisitor
-chmod +x inquisitor
+case "${CONTAINER_ROLE:-}" in
+    ftp-server)
+        echo "FTP server"
 
-exec /usr/sbin/vsftpd /etc/vsftpd.conf
+        if ! id ftpuser >/dev/null 2>&1; then
+            adduser --disabled-password --gecos "" ftpuser
+            echo "ftpuser:${FTP_PASSWORD:-ftppass}" | chpasswd
+        fi
+
+        chown -R ftpuser:ftpuser /home/vsftpd/ftpuser || true
+        chmod 755 /home/vsftpd/ftpuser
+
+        exec /usr/sbin/vsftpd /etc/vsftpd.conf
+        ;;
+
+    attacker)
+        echo "Starting Attacker"
+        cd /app
+		exec tail -f /dev/null
+        ;;
+
+    ftp-client)
+        echo "FTP client"
+        mkdir -p /shared
+        chmod 755 /shared
+        exec tail -f /dev/null
+        ;;
+
+    *)
+        exit 1
+        ;;
+esac

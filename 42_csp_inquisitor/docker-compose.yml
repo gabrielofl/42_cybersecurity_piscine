@@ -1,37 +1,45 @@
 services:
-  one:
-    build:
-      context: .
-    image: inquisitor:latest
-    container_name: one
-    hostname: one
+  ftp-server:
+    build: .
+    container_name: ftp-server
+    hostname: ftp-server
+    environment:
+      - CONTAINER_ROLE=ftp-server
+      - FTP_PASSWORD=testpass
+    networks:
+      ftp_net:
+        ipv4_address: 172.28.0.10
+    volumes:
+      - ./ftp_data:/home/vsftpd/ftpuser
     ports:
       - "2121:21"
+      - "21100-21110:21100-21110"
+
+  ftp-client:
+    build: .
+    container_name: ftp-client
+    hostname: ftp-client
+    environment:
+      - CONTAINER_ROLE=ftp-client
     networks:
       ftp_net:
         ipv4_address: 172.28.0.11
+    volumes:
+      - ./client_files:/shared
 
-  two:
-    image: inquisitor:latest
-    container_name: two
-    hostname: two
-    ports:
-      - "2221:21"
+  attacker:
+    build: .
+    container_name: attacker
+    hostname: attacker
+    environment:
+      - CONTAINER_ROLE=attacker
     networks:
       ftp_net:
         ipv4_address: 172.28.0.12
-    pull_policy: never
-
-  three:
-    image: inquisitor:latest
-    container_name: three
-    hostname: three
-    ports:
-      - "2321:21"
-    networks:
-      ftp_net:
-        ipv4_address: 172.28.0.13
-    pull_policy: never
+    privileged: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
 
 networks:
   ftp_net:
