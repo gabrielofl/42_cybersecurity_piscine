@@ -13,7 +13,7 @@ def test_dvwa():
     
     print("[+] Checking if DVWA is accessible...")
     try:
-        response = requests.get("http://localhost/login.php", timeout=10)
+        response = requests.get("http://localhost:8080/login.php", timeout=10)
         if response.status_code == 200:
             print("[+] DVWA is running!")
         else:
@@ -21,25 +21,25 @@ def test_dvwa():
             return
     except:
         print("[-] DVWA is not running. Please start it with:")
-        print("    docker run -it -d --name dvwa -p 80:80 vulnerables/web-dvwa")
+        print("    docker run -it -d --name dvwa -p 8080:80 vulnerables/web-dvwa")
         return
     
     test_cases = [
         {
             "name": "DVWA SQL Injection (GET)",
-            "url": "http://localhost/vulnerabilities/sqli/?id=1&Submit=Submit",
+            "url": "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit",
             "method": "GET",
             "expected": True
         },
         {
             "name": "DVWA SQL Injection Blind (GET)",
-            "url": "http://localhost/vulnerabilities/sqli_blind/?id=1&Submit=Submit",
+            "url": "http://localhost:8080/vulnerabilities/sqli_blind/?id=1&Submit=Submit",
             "method": "GET",
             "expected": True
         },
         {
             "name": "DVWA Login (POST)",
-            "url": "http://localhost/login.php",
+            "url": "http://localhost:8080/login.php",
             "method": "POST",
             "data": {"username": "admin", "password": "password", "Login": "Login"},
             "expected": False  # Not necessarily vulnerable
@@ -54,16 +54,10 @@ def test_dvwa():
         print(f"    URL: {test_case['url']}")
         print(f"    Method: {test_case['method']}")
         
-        cmd = [
-            "python3", "vaccine.py",
-            "-X", test_case['url'],
-            "-m", test_case['method'],
-            "--exploit"
-        ]
+        cmd = ["python3", "vaccine.py", "-X", test_case['method'], test_case['url']]
         
         if test_case['method'] == 'POST':
             cmd.append("--post-data")
-            # Note: In full implementation, you'd need to handle POST data
         
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -88,11 +82,11 @@ def quick_test():
     print("[+] Quick test of VACCINE functionality")
     
     # Test with a sample vulnerable URL (you would replace with actual DVWA URL)
-    test_url = "http://localhost/vulnerabilities/sqli/?id=1&Submit=Submit"
+    test_url = "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit"
     
     print(f"\n[+] Testing: {test_url}")
     
-    cmd = ["python3", "vaccine.py", "-X", test_url, "--exploit"]
+    cmd = ["python3", "vaccine.py", test_url]
     
     try:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -114,11 +108,6 @@ def quick_test():
         print(f"[-] Error: {e}")
 
 if __name__ == "__main__":
-    print("""
-╔══════════════════════════════════════════════════════════╗
-║                VACCINE DVWA Test Suite                  ║
-╚══════════════════════════════════════════════════════════╝
-    """)
     
     if len(sys.argv) > 1 and sys.argv[1] == "quick":
         quick_test()

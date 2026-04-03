@@ -301,9 +301,9 @@ class VaccineSQLiScanner:
             'database_type': 'unknown',
             'payloads_used': [],
             'databases': [],
-            'tables': [],
-            'columns': [],
-            'data_dump': []
+            'tables': {},
+            'columns': {},
+            'data_dump': {}
         }
         
         # Extract parameters
@@ -435,7 +435,7 @@ class VaccineSQLiScanner:
                     else:
                         response = self.session.post(base_url, data=params)
                     
-                    injection_results['data'][table_name] = self.extract_data(response.text, len(columns))
+                    injection_results['data_dump'][table_name] = self.extract_data(response.text, len(columns))
         
         return injection_results
 
@@ -564,16 +564,14 @@ def main():
         description='Vaccine',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''Examples:
-  %(prog)s -oX "http://example.com/page.php?id=1"
-  %(prog)s -oX "http://example.com/login.php" -m POST
-  %(prog)s -o report.json -X "http://example.com/page.php?id=1"
+  %(prog)s "http://example.com/page.php?id=1"
+  %(prog)s -X POST "http://example.com/login.php"
+  %(prog)s -o report.json "http://example.com/page.php?id=1"
         '''
     )
-    
+    parser.add_argument('url', help='Target URL to test')
     parser.add_argument('-o', '--output', help='Output file for results')
-    parser.add_argument('-X', '--url', required=True, help='Target URL to test')
-    parser.add_argument('-m', '--method', default='GET', choices=['GET', 'POST'], 
-                       help='HTTP method to use (default: GET)')
+    parser.add_argument('-X', '--method', default='GET', choices=['GET', 'POST'], help='HTTP method (default: GET)')
     
     args = parser.parse_args()
     
@@ -630,7 +628,7 @@ Output: {args.output if args.output else 'Default'}
             if 'columns' in results:
                 for table, columns in results['columns'].items():
                     print(f"    Columns in {table}: {len(columns)}")
-            if 'data' in results:
+            if 'data_dump' in results:
                 for table, data in results['data'].items():
                     print(f"    Rows dumped from {table}: {len(data)}")
     else:
