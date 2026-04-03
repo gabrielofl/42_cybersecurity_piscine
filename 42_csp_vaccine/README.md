@@ -67,3 +67,12 @@ Copy
 python3 test_dvwa.py
 
 https://los.rubiya.kr
+
+# Test SQL Injection
+./vaccine.py "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit"
+
+# Test with POST method
+./vaccine.py -X POST "http://localhost:8080/login.php"
+
+# Test with output file
+./vaccine.py -o dvwa_scan.json "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit"
